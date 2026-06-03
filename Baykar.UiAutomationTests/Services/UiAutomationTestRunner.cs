@@ -57,8 +57,12 @@ public sealed class UiAutomationTestRunner
             string message = step.Action.Trim() switch
             {
                 "click" => await ExecuteClickAsync(step, mainWindow, cancellationToken),
+                "clickAndWaitForText" => await ExecuteClickAndWaitForTextAsync(step, mainWindow, cancellationToken),
                 "setTextAndClick" => await ExecuteSetTextAndClickAsync(step, mainWindow, cancellationToken),
                 "waitForText" => await ExecuteWaitForTextAsync(step, mainWindow, cancellationToken),
+                "waitForTextContains" => await ExecuteWaitForTextAsync(step, mainWindow, cancellationToken),
+                "waitForTextNotEmpty" => await ExecuteWaitForTextNotEmptyAsync(step, mainWindow, cancellationToken),
+                "waitForNumericGreaterThan" => await ExecuteWaitForNumericGreaterThanAsync(step, mainWindow, cancellationToken),
                 _ => throw new InvalidOperationException($"Unsupported action: {step.Action}")
             };
 
@@ -94,7 +98,21 @@ public sealed class UiAutomationTestRunner
         CancellationToken cancellationToken)
     {
         string automationId = RequireValue(step.AutomationId, "AutomationId");
-        AutomationElement element = await FindRequiredElementAsync(mainWindow, automationId, step.TimeoutMs, cancellationToken);
+        AutomationElement element = await FindRequiredElementAsync(step, mainWindow, automationId, cancellationToken);
+
+        InvokeElement(element);
+        await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
+
+        return "Step completed.";
+    }
+
+    private async Task<string> ExecuteClickAndWaitForTextAsync(
+        TestStep step,
+        Window mainWindow,
+        CancellationToken cancellationToken)
+    {
+        string automationId = RequireValue(step.AutomationId, "AutomationId");
+        AutomationElement element = await FindRequiredElementAsync(step, mainWindow, automationId, cancellationToken);
 
         InvokeElement(element);
         await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
@@ -111,10 +129,10 @@ public sealed class UiAutomationTestRunner
         string buttonAutomationId = RequireValue(step.ButtonAutomationId, "ButtonAutomationId");
         string value = step.Value ?? string.Empty;
 
-        AutomationElement textBoxElement = await FindRequiredElementAsync(mainWindow, textBoxAutomationId, step.TimeoutMs, cancellationToken);
+        AutomationElement textBoxElement = await FindRequiredElementAsync(step, mainWindow, textBoxAutomationId, cancellationToken);
         SetTextBoxValue(textBoxElement, value);
 
-        AutomationElement buttonElement = await FindRequiredElementAsync(mainWindow, buttonAutomationId, step.TimeoutMs, cancellationToken);
+        AutomationElement buttonElement = await FindRequiredElementAsync(step, mainWindow, buttonAutomationId, cancellationToken);
         InvokeElement(buttonElement);
 
         await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
@@ -130,6 +148,62 @@ public sealed class UiAutomationTestRunner
         await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
 
         return "Expected text was found.";
+    }
+
+    private async Task<string> ExecuteWaitForTextNotEmptyAsync(
+        TestStep step,
+        Window mainWindow,
+        CancellationToken cancellationToken)
+    {
+        string automationId = RequireValue(step.ExpectedTextAutomationId, "ExpectedTextAutomationId");
+        TextWaitResult result = await _elementFinder.WaitForTextNotEmptyAsync(
+            mainWindow,
+            automationId,
+            step.TimeoutMs,
+            cancellationToken);
+
+        if (!result.IsFound)
+        {
+            throw new TimeoutException(CreateFailureMessage(
+                step,
+                automationId,
+                "non-empty text",
+                result.ActualText));
+        }
+
+        return "Text was not empty.";
+    }
+
+    private async Task<string> ExecuteWaitForNumericGreaterThanAsync(
+        TestStep step,
+        Window mainWindow,
+        CancellationToken cancellationToken)
+    {
+        string automationId = RequireValue(step.ExpectedTextAutomationId, "ExpectedTextAutomationId");
+        double expectedGreaterThan = step.ExpectedGreaterThan
+            ?? throw new InvalidOperationException("ExpectedGreaterThan is required.");
+
+        NumericWaitResult result = await _elementFinder.WaitForNumericGreaterThanAsync(
+            mainWindow,
+            automationId,
+            expectedGreaterThan,
+            step.TimeoutMs,
+            cancellationToken);
+
+        if (!result.IsFound)
+        {
+            string actualValue = result.ActualValue.HasValue
+                ? result.ActualValue.Value.ToString("G", System.Globalization.CultureInfo.InvariantCulture)
+                : $"not numeric; text='{result.ActualText}'";
+
+            throw new TimeoutException(CreateFailureMessage(
+                step,
+                automationId,
+                $"> {expectedGreaterThan.ToString("G", System.Globalization.CultureInfo.InvariantCulture)}",
+                actualValue));
+        }
+
+        return "Numeric value was greater than expected.";
     }
 
     private async Task VerifyExpectedTextAsync(
@@ -152,8 +226,11 @@ public sealed class UiAutomationTestRunner
 
         if (!result.IsFound)
         {
-            throw new TimeoutException(
-                $"Expected text was not found. AutomationId='{step.ExpectedTextAutomationId}', ExpectedContains='{expectedContains}', ActualText='{result.ActualText}'.");
+            throw new TimeoutException(CreateFailureMessage(
+                step,
+                step.ExpectedTextAutomationId,
+                $"contains '{expectedContains}'",
+                result.ActualText));
         }
     }
 
@@ -200,20 +277,24 @@ public sealed class UiAutomationTestRunner
     }
 
     private async Task<AutomationElement> FindRequiredElementAsync(
+        TestStep step,
         Window mainWindow,
         string automationId,
-        int timeoutMs,
         CancellationToken cancellationToken)
     {
         AutomationElement? element = await _elementFinder.FindByAutomationIdAsync(
             mainWindow,
             automationId,
-            timeoutMs,
+            step.TimeoutMs,
             cancellationToken);
 
         if (element is null)
         {
-            throw new TimeoutException($"Element was not found: {automationId}");
+            throw new TimeoutException(CreateFailureMessage(
+                step,
+                automationId,
+                "element to exist",
+                "not found"));
         }
 
         return element;
@@ -227,5 +308,16 @@ public sealed class UiAutomationTestRunner
         }
 
         return value;
+    }
+
+    private static string CreateFailureMessage(
+        TestStep step,
+        string automationId,
+        string expectedValue,
+        string actualValue)
+    {
+        int timeoutMs = step.TimeoutMs > 0 ? step.TimeoutMs : 5000;
+
+        return $"Step='{step.Name}', AutomationId='{automationId}', Expected='{expectedValue}', Actual='{actualValue}', TimeoutMs={timeoutMs}.";
     }
 }

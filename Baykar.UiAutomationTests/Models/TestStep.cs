@@ -18,5 +18,7 @@ public sealed class TestStep
 
     public string? ExpectedContains { get; init; }
 
+    public double? ExpectedGreaterThan { get; init; }
+
     public int TimeoutMs { get; init; } = 5000;
 }

@@ -1,5 +1,7 @@
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Patterns;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Baykar.UiAutomationTests.Services;
 
@@ -71,6 +73,77 @@ public sealed class AutomationElementFinder
         return new TextWaitResult(false, actualText);
     }
 
+    public async Task<TextWaitResult> WaitForTextNotEmptyAsync(
+        AutomationElement rootElement,
+        string automationId,
+        int timeoutMs,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(rootElement);
+        ArgumentException.ThrowIfNullOrWhiteSpace(automationId);
+
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(GetEffectiveTimeout(timeoutMs));
+        string actualText = string.Empty;
+
+        while (DateTime.UtcNow <= deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            AutomationElement? element = rootElement.FindFirstDescendant(automationId);
+
+            if (element is not null)
+            {
+                actualText = GetElementText(element);
+
+                if (!string.IsNullOrWhiteSpace(actualText))
+                {
+                    return new TextWaitResult(true, actualText);
+                }
+            }
+
+            await Task.Delay(PollIntervalMs, cancellationToken);
+        }
+
+        return new TextWaitResult(false, actualText);
+    }
+
+    public async Task<NumericWaitResult> WaitForNumericGreaterThanAsync(
+        AutomationElement rootElement,
+        string automationId,
+        double expectedGreaterThan,
+        int timeoutMs,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(rootElement);
+        ArgumentException.ThrowIfNullOrWhiteSpace(automationId);
+
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(GetEffectiveTimeout(timeoutMs));
+        string actualText = string.Empty;
+        double? actualValue = null;
+
+        while (DateTime.UtcNow <= deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            AutomationElement? element = rootElement.FindFirstDescendant(automationId);
+
+            if (element is not null)
+            {
+                actualText = GetElementText(element);
+                actualValue = TryParseFirstNumber(actualText);
+
+                if (actualValue.HasValue && actualValue.Value > expectedGreaterThan)
+                {
+                    return new NumericWaitResult(true, actualText, actualValue);
+                }
+            }
+
+            await Task.Delay(PollIntervalMs, cancellationToken);
+        }
+
+        return new NumericWaitResult(false, actualText, actualValue);
+    }
+
     public static string GetElementText(AutomationElement element)
     {
         ArgumentNullException.ThrowIfNull(element);
@@ -122,6 +195,22 @@ public sealed class AutomationElementFinder
     {
         return timeoutMs > 0 ? timeoutMs : 5000;
     }
+
+    private static double? TryParseFirstNumber(string text)
+    {
+        Match match = Regex.Match(text, @"[-+]?\d+(\.\d+)?");
+
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return double.TryParse(match.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
+            ? value
+            : null;
+    }
 }
 
 public sealed record TextWaitResult(bool IsFound, string ActualText);
+
+public sealed record NumericWaitResult(bool IsFound, string ActualText, double? ActualValue);

@@ -264,7 +264,7 @@ It reads a JSON test script and controls the already running `Baykar.UserInterfa
 Requirements:
 
 * `Baykar.UserInterface` must be running before the automation test runner is started.
-* `Baykar.SimulationInterface` should be running for communication and feedback-related tests.
+* `Baykar.SimulationInterface` must be running and **Start Simulation** must be clicked before feedback and communication tests are run.
 * The default test script is located at:
 
 ```text
