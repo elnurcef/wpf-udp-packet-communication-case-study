@@ -58,7 +58,7 @@ wpf-udp-communication-simulator/
 ## Technologies
 
 * C#
-* .NET 8
+* .NET 10
 * WPF
 * MVVM-style structure
 * UDP communication
