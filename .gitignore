@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+
+**/Release/Log Kayıtları/
+**/Release/MATLAB Dönüsümleri/
+**/Release/Test/
+
+*.log
+*.mat
