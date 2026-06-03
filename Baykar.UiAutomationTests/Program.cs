@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Baykar.UiAutomationTests.Models;
+using Baykar.UiAutomationTests.Reports;
 using Baykar.UiAutomationTests.Results;
 using Baykar.UiAutomationTests.Services;
 using FlaUI.Core;
@@ -37,6 +38,7 @@ try
     TestRunResult result = await runner.RunAsync(script, mainWindow, CancellationToken.None);
 
     PrintResult(result);
+    await TryGeneratePdfReportAsync(result, CancellationToken.None);
 
     return result.IsPassed ? 0 : 1;
 }
@@ -128,4 +130,18 @@ static void PrintResult(TestRunResult result)
 
     Console.WriteLine();
     Console.WriteLine($"Final Result: {(result.IsPassed ? "PASSED" : "FAILED")}");
+}
+
+static async Task TryGeneratePdfReportAsync(TestRunResult result, CancellationToken cancellationToken)
+{
+    try
+    {
+        TestReportService reportService = new();
+        string reportPath = await reportService.GeneratePdfReportAsync(result, cancellationToken);
+        Console.WriteLine($"PDF Report: {reportPath}");
+    }
+    catch (Exception exception)
+    {
+        Console.WriteLine($"PDF report generation failed: {exception.Message}");
+    }
 }

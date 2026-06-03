@@ -278,6 +278,13 @@ dotnet run --project .\Baykar.UiAutomationTests\Baykar.UiAutomationTests.csproj
 ```
 
 The runner prints each step result and a final `PASSED` or `FAILED` result to the console.
+After each run, it also generates a PDF report with the final result and all step results.
+
+PDF report output folder:
+
+```text
+Release/TestReports
+```
 
 ## Repository Note
 
