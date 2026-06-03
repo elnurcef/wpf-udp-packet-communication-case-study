@@ -1,5 +1,6 @@
 using Baykar.UiAutomationTests.Models;
 using Baykar.UiAutomationTests.Results;
+using Baykar.Shared.Localization;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
 using FlaUI.Core.Patterns;
@@ -10,10 +11,12 @@ namespace Baykar.UiAutomationTests.Services;
 public sealed class UiAutomationTestRunner
 {
     private readonly AutomationElementFinder _elementFinder;
+    private readonly LocalizationService _localizationService;
 
-    public UiAutomationTestRunner(AutomationElementFinder elementFinder)
+    public UiAutomationTestRunner(AutomationElementFinder elementFinder, LocalizationService localizationService)
     {
         _elementFinder = elementFinder;
+        _localizationService = localizationService;
     }
 
     public async Task<TestRunResult> RunAsync(
@@ -63,7 +66,7 @@ public sealed class UiAutomationTestRunner
                 "waitForTextContains" => await ExecuteWaitForTextAsync(step, mainWindow, cancellationToken),
                 "waitForTextNotEmpty" => await ExecuteWaitForTextNotEmptyAsync(step, mainWindow, cancellationToken),
                 "waitForNumericGreaterThan" => await ExecuteWaitForNumericGreaterThanAsync(step, mainWindow, cancellationToken),
-                _ => throw new InvalidOperationException($"Unsupported action: {step.Action}")
+                _ => throw new InvalidOperationException(FormatText("Automation.UnsupportedAction", step.Action))
             };
 
             return new TestStepResult
@@ -103,7 +106,7 @@ public sealed class UiAutomationTestRunner
         InvokeElement(element);
         await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
 
-        return "Step completed.";
+        return Text("Automation.StepCompleted");
     }
 
     private async Task<string> ExecuteClickAndWaitForTextAsync(
@@ -117,7 +120,7 @@ public sealed class UiAutomationTestRunner
         InvokeElement(element);
         await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
 
-        return "Step completed.";
+        return Text("Automation.StepCompleted");
     }
 
     private async Task<string> ExecuteSetTextAndClickAsync(
@@ -137,7 +140,7 @@ public sealed class UiAutomationTestRunner
 
         await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
 
-        return "Step completed.";
+        return Text("Automation.StepCompleted");
     }
 
     private async Task<string> ExecuteWaitForTextAsync(
@@ -147,7 +150,7 @@ public sealed class UiAutomationTestRunner
     {
         await VerifyExpectedTextAsync(step, mainWindow, cancellationToken);
 
-        return "Expected text was found.";
+        return Text("Automation.ExpectedTextFound");
     }
 
     private async Task<string> ExecuteWaitForTextNotEmptyAsync(
@@ -167,11 +170,11 @@ public sealed class UiAutomationTestRunner
             throw new TimeoutException(CreateFailureMessage(
                 step,
                 automationId,
-                "non-empty text",
+                Text("Automation.NonEmptyText"),
                 result.ActualText));
         }
 
-        return "Text was not empty.";
+        return Text("Automation.TextWasNotEmpty");
     }
 
     private async Task<string> ExecuteWaitForNumericGreaterThanAsync(
@@ -194,7 +197,7 @@ public sealed class UiAutomationTestRunner
         {
             string actualValue = result.ActualValue.HasValue
                 ? result.ActualValue.Value.ToString("G", System.Globalization.CultureInfo.InvariantCulture)
-                : $"not numeric; text='{result.ActualText}'";
+                : FormatText("Automation.NotNumericActual", result.ActualText);
 
             throw new TimeoutException(CreateFailureMessage(
                 step,
@@ -203,7 +206,7 @@ public sealed class UiAutomationTestRunner
                 actualValue));
         }
 
-        return "Numeric value was greater than expected.";
+        return Text("Automation.NumericValueGreater");
     }
 
     private async Task VerifyExpectedTextAsync(
@@ -216,11 +219,11 @@ public sealed class UiAutomationTestRunner
             return;
         }
 
-        string expectedContains = RequireValue(step.ExpectedContains, "ExpectedContains");
-        TextWaitResult result = await _elementFinder.WaitForTextContainsAsync(
+        IReadOnlyList<string> expectedContainsValues = GetExpectedContainsValues(step);
+        TextWaitResult result = await _elementFinder.WaitForAnyTextContainsAsync(
             mainWindow,
             step.ExpectedTextAutomationId,
-            expectedContains,
+            expectedContainsValues,
             step.TimeoutMs,
             cancellationToken);
 
@@ -229,9 +232,26 @@ public sealed class UiAutomationTestRunner
             throw new TimeoutException(CreateFailureMessage(
                 step,
                 step.ExpectedTextAutomationId,
-                $"contains '{expectedContains}'",
+                CreateExpectedTextDescription(expectedContainsValues),
                 result.ActualText));
         }
+    }
+
+    private IReadOnlyList<string> GetExpectedContainsValues(TestStep step)
+    {
+        if (step.ExpectedContainsAny.Count > 0)
+        {
+            return step.ExpectedContainsAny;
+        }
+
+        return [RequireValue(step.ExpectedContains, "ExpectedContains")];
+    }
+
+    private static string CreateExpectedTextDescription(IReadOnlyList<string> expectedContainsValues)
+    {
+        return expectedContainsValues.Count == 1
+            ? $"contains '{expectedContainsValues[0]}'"
+            : $"contains any of {string.Join(", ", expectedContainsValues.Select(value => $"'{value}'"))}";
     }
 
     private static void InvokeElement(AutomationElement element)
@@ -293,24 +313,24 @@ public sealed class UiAutomationTestRunner
             throw new TimeoutException(CreateFailureMessage(
                 step,
                 automationId,
-                "element to exist",
-                "not found"));
+                Text("Automation.ElementToExist"),
+                Text("Automation.NotFound")));
         }
 
         return element;
     }
 
-    private static string RequireValue(string? value, string propertyName)
+    private string RequireValue(string? value, string propertyName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new InvalidOperationException($"{propertyName} is required.");
+            throw new InvalidOperationException(FormatText("Automation.RequiredProperty", propertyName));
         }
 
         return value;
     }
 
-    private static string CreateFailureMessage(
+    private string CreateFailureMessage(
         TestStep step,
         string automationId,
         string expectedValue,
@@ -318,6 +338,27 @@ public sealed class UiAutomationTestRunner
     {
         int timeoutMs = step.TimeoutMs > 0 ? step.TimeoutMs : 5000;
 
-        return $"Step='{step.Name}', AutomationId='{automationId}', Expected='{expectedValue}', Actual='{actualValue}', TimeoutMs={timeoutMs}.";
+        return FormatText(
+            "Automation.FailureMessage",
+            GetStepDisplayName(step.Name),
+            automationId,
+            expectedValue,
+            actualValue,
+            timeoutMs);
+    }
+
+    private string GetStepDisplayName(string stepName)
+    {
+        return _localizationService.GetTextOrDefault($"AutomationStep.{stepName}", stepName);
+    }
+
+    private string Text(string key)
+    {
+        return _localizationService.GetText(key);
+    }
+
+    private string FormatText(string key, params object[] values)
+    {
+        return _localizationService.FormatText(key, values);
     }
 }

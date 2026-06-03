@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using System.Text;
 using Baykar.UiAutomationTests.Models;
 using Baykar.UiAutomationTests.Reports;
 using Baykar.UiAutomationTests.Results;
 using Baykar.UiAutomationTests.Services;
+using Baykar.Shared.Localization;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
@@ -11,22 +13,25 @@ using FlaUI.UIA3;
 const string UserInterfaceProcessName = "Baykar.UserInterface";
 const string UserInterfaceWindowTitle = "Baykar User Interface";
 
+Console.OutputEncoding = Encoding.UTF8;
+LocalizationService localizationService = new(GetOutputLanguage(args));
+
 try
 {
-    string scriptPath = GetScriptPath();
+    string scriptPath = GetScriptPath(localizationService);
 
-    Console.WriteLine($"Script: {scriptPath}");
-    Console.WriteLine("Attaching to Baykar.UserInterface...");
+    Console.WriteLine($"{localizationService.GetText("Automation.Script")}: {scriptPath}");
+    Console.WriteLine(localizationService.GetText("Automation.Attaching"));
 
     using UIA3Automation automation = new();
-    using Application application = AttachToUserInterface();
+    using Application application = AttachToUserInterface(localizationService);
 
     Window mainWindow = application.GetMainWindow(automation, TimeSpan.FromSeconds(5))
-        ?? throw new InvalidOperationException("Baykar.UserInterface main window was not found.");
+        ?? throw new InvalidOperationException(localizationService.GetText("Automation.MainWindowNotFound"));
 
     if (!mainWindow.Title.Contains(UserInterfaceWindowTitle, StringComparison.OrdinalIgnoreCase))
     {
-        Console.WriteLine($"Attached window title: {mainWindow.Title}");
+        Console.WriteLine(localizationService.FormatText("Automation.AttachedWindowTitle", mainWindow.Title));
     }
 
     PrepareMainWindow(mainWindow);
@@ -34,22 +39,35 @@ try
     TestScriptLoader loader = new();
     TestScript script = await loader.LoadAsync(scriptPath, CancellationToken.None);
 
-    UiAutomationTestRunner runner = new(new AutomationElementFinder());
+    UiAutomationTestRunner runner = new(new AutomationElementFinder(), localizationService);
     TestRunResult result = await runner.RunAsync(script, mainWindow, CancellationToken.None);
 
-    PrintResult(result);
-    await TryGeneratePdfReportAsync(result, CancellationToken.None);
+    PrintResult(result, localizationService);
+    await TryGeneratePdfReportAsync(result, localizationService, CancellationToken.None);
 
     return result.IsPassed ? 0 : 1;
 }
 catch (Exception exception)
 {
-    Console.WriteLine($"[FAIL] {exception.Message}");
-    Console.WriteLine("Final Result: FAILED");
+    Console.WriteLine($"[{localizationService.GetText("Automation.Fail")}] {exception.Message}");
+    Console.WriteLine($"{localizationService.GetText("Automation.FinalResult")}: {localizationService.GetText("Automation.Failed")}");
     return 1;
 }
 
-static string GetScriptPath()
+static SupportedLanguage GetOutputLanguage(string[] args)
+{
+    for (int index = 0; index < args.Length - 1; index++)
+    {
+        if (string.Equals(args[index], "--lang", StringComparison.OrdinalIgnoreCase))
+        {
+            return LocalizationService.FromCode(args[index + 1]);
+        }
+    }
+
+    return SupportedLanguage.English;
+}
+
+static string GetScriptPath(LocalizationService localizationService)
 {
     string defaultScriptPath = Path.GetFullPath(Path.Combine(
         AppContext.BaseDirectory,
@@ -67,18 +85,18 @@ static string GetScriptPath()
         return defaultScriptPath;
     }
 
-    Console.Write("Default test script was not found. Enter test script path: ");
+    Console.Write(localizationService.GetText("Automation.DefaultScriptNotFoundPrompt"));
     string? scriptPath = Console.ReadLine();
 
     if (string.IsNullOrWhiteSpace(scriptPath))
     {
-        throw new InvalidOperationException("Test script path is required.");
+        throw new InvalidOperationException(localizationService.GetText("Automation.ScriptPathRequired"));
     }
 
     return scriptPath;
 }
 
-static Application AttachToUserInterface()
+static Application AttachToUserInterface(LocalizationService localizationService)
 {
     Process? process = Process
         .GetProcessesByName(UserInterfaceProcessName)
@@ -87,7 +105,7 @@ static Application AttachToUserInterface()
 
     if (process is null)
     {
-        throw new InvalidOperationException("Baykar.UserInterface is not running. Start it before running automation tests.");
+        throw new InvalidOperationException(localizationService.GetText("Automation.UserInterfaceNotRunning"));
     }
 
     return Application.Attach(process);
@@ -113,35 +131,50 @@ static void PrepareMainWindow(Window mainWindow)
     Thread.Sleep(500);
 }
 
-static void PrintResult(TestRunResult result)
+static void PrintResult(TestRunResult result, LocalizationService localizationService)
 {
     Console.WriteLine();
-    Console.WriteLine($"Test: {result.TestName}");
+    Console.WriteLine($"{localizationService.GetText("Automation.Test")}: {GetDisplayName(result.TestName, localizationService)}");
 
     foreach (TestStepResult stepResult in result.StepResults)
     {
-        string status = stepResult.IsPassed ? "PASS" : "FAIL";
+        string status = stepResult.IsPassed
+            ? localizationService.GetText("Automation.Pass")
+            : localizationService.GetText("Automation.Fail");
+
         string message = stepResult.IsPassed || string.IsNullOrWhiteSpace(stepResult.Message)
             ? string.Empty
             : $" - {stepResult.Message}";
 
-        Console.WriteLine($"[{status}] {stepResult.StepName}{message}");
+        Console.WriteLine($"[{status}] {GetDisplayName(stepResult.StepName, localizationService)}{message}");
     }
 
     Console.WriteLine();
-    Console.WriteLine($"Final Result: {(result.IsPassed ? "PASSED" : "FAILED")}");
+    string finalResult = result.IsPassed
+        ? localizationService.GetText("Automation.Passed")
+        : localizationService.GetText("Automation.Failed");
+
+    Console.WriteLine($"{localizationService.GetText("Automation.FinalResult")}: {finalResult}");
 }
 
-static async Task TryGeneratePdfReportAsync(TestRunResult result, CancellationToken cancellationToken)
+static async Task TryGeneratePdfReportAsync(
+    TestRunResult result,
+    LocalizationService localizationService,
+    CancellationToken cancellationToken)
 {
     try
     {
-        TestReportService reportService = new();
+        TestReportService reportService = new(localizationService);
         string reportPath = await reportService.GeneratePdfReportAsync(result, cancellationToken);
-        Console.WriteLine($"PDF Report: {reportPath}");
+        Console.WriteLine($"{localizationService.GetText("Automation.PdfReport")}: {reportPath}");
     }
     catch (Exception exception)
     {
-        Console.WriteLine($"PDF report generation failed: {exception.Message}");
+        Console.WriteLine(localizationService.FormatText("Automation.PdfReportFailed", exception.Message));
     }
+}
+
+static string GetDisplayName(string name, LocalizationService localizationService)
+{
+    return localizationService.GetTextOrDefault($"AutomationStep.{name}", name);
 }

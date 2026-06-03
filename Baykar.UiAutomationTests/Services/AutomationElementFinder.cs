@@ -73,6 +73,52 @@ public sealed class AutomationElementFinder
         return new TextWaitResult(false, actualText);
     }
 
+    public async Task<TextWaitResult> WaitForAnyTextContainsAsync(
+        AutomationElement rootElement,
+        string automationId,
+        IReadOnlyList<string> expectedTexts,
+        int timeoutMs,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(rootElement);
+        ArgumentException.ThrowIfNullOrWhiteSpace(automationId);
+        ArgumentNullException.ThrowIfNull(expectedTexts);
+
+        string[] normalizedExpectedTexts = expectedTexts
+            .Where(expectedText => !string.IsNullOrWhiteSpace(expectedText))
+            .ToArray();
+
+        if (normalizedExpectedTexts.Length == 0)
+        {
+            throw new InvalidOperationException("At least one expected text value is required.");
+        }
+
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(GetEffectiveTimeout(timeoutMs));
+        string actualText = string.Empty;
+
+        while (DateTime.UtcNow <= deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            AutomationElement? element = rootElement.FindFirstDescendant(automationId);
+
+            if (element is not null)
+            {
+                actualText = GetElementText(element);
+
+                if (normalizedExpectedTexts.Any(expectedText =>
+                    actualText.Contains(expectedText, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return new TextWaitResult(true, actualText);
+                }
+            }
+
+            await Task.Delay(PollIntervalMs, cancellationToken);
+        }
+
+        return new TextWaitResult(false, actualText);
+    }
+
     public async Task<TextWaitResult> WaitForTextNotEmptyAsync(
         AutomationElement rootElement,
         string automationId,

@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Input;
 using Baykar.Shared.Communication;
 using Baykar.Shared.Enums;
+using Baykar.Shared.Localization;
 using Baykar.Shared.Logging;
 using Baykar.Shared.Matlab;
 using Baykar.Shared.Models;
@@ -25,6 +26,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly PacketCaptureStateMachine _packetCaptureStateMachine = new();
     private readonly CommunicationLogService _communicationLogService = new();
     private readonly MatlabConversionService _matlabConversionService = new();
+    private readonly LocalizationService _localizationService = new();
 
     private CancellationTokenSource? _listenerCancellationTokenSource;
     private CancellationTokenSource? _playbackCancellationTokenSource;
@@ -58,21 +60,32 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _selectedPlaybackFilePath = string.Empty;
     private string _matlabConversionStatus = "Not converted";
     private string _matlabOutputFilePath = string.Empty;
+    private IReadOnlyList<DisplayRow> _connectionRows = [];
+    private LanguageOption _selectedLanguage;
     private byte[]? _lastBuiltPacket;
 
     public MainViewModel()
     {
+        LanguageOptions =
+        [
+            new LanguageOption(_localizationService.GetText("Common.English"), SupportedLanguage.English),
+            new LanguageOption(_localizationService.GetText("Common.Turkish"), SupportedLanguage.Turkish)
+        ];
+
+        _selectedLanguage = LanguageOptions[0];
+        RefreshLocalizedState();
+
         StartListenerCommand = new RelayCommand(() => _ = StartListenerAsync());
         StopListenerCommand = new RelayCommand(StopListener);
 
-        SendCommand1Command = new RelayCommand(async () => await BuildAndSendCommandPacketAsync(CommandType.Command1, "Command 1"));
-        SendCommand2Command = new RelayCommand(async () => await BuildAndSendCommandPacketAsync(CommandType.Command2, "Command 2"));
-        SendCommand3Command = new RelayCommand(async () => await BuildAndSendCommandPacketAsync(CommandType.Command3, "Command 3"));
+        SendCommand1Command = new RelayCommand(async () => await BuildAndSendCommandPacketAsync(CommandType.Command1, "User.Command1"));
+        SendCommand2Command = new RelayCommand(async () => await BuildAndSendCommandPacketAsync(CommandType.Command2, "User.Command2"));
+        SendCommand3Command = new RelayCommand(async () => await BuildAndSendCommandPacketAsync(CommandType.Command3, "User.Command3"));
 
-        SendSetting1Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting1, Setting1Value, "Setting 1"));
-        SendSetting2Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting2, Setting2Value, "Setting 2"));
-        SendSetting3Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting3, Setting3Value, "Setting 3"));
-        SendSetting4Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting4, Setting4Value, "Setting 4"));
+        SendSetting1Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting1, Setting1Value, "User.Setting1Name"));
+        SendSetting2Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting2, Setting2Value, "User.Setting2Name"));
+        SendSetting3Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting3, Setting3Value, "User.Setting3Name"));
+        SendSetting4Command = new RelayCommand(async () => await BuildAndSendSettingPacketAsync(SettingType.Setting4, Setting4Value, "User.Setting4Name"));
 
         StartLoggingCommand = new RelayCommand(StartLogging);
         StopLoggingCommand = new RelayCommand(StopLogging);
@@ -84,13 +97,41 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public IReadOnlyList<DisplayRow> ConnectionRows { get; } = new List<DisplayRow>
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; }
+
+    public LanguageOption SelectedLanguage
     {
-        new("Connection Status:", "Not Connected"),
-        new("Selected Protocol:", "UDP"),
-        new("Local Port:", "5001"),
-        new("Remote Port:", "5000")
-    };
+        get => _selectedLanguage;
+        set
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            if (!SetProperty(ref _selectedLanguage, value))
+            {
+                return;
+            }
+
+            _localizationService.SetLanguage(value.Language);
+            RefreshLocalizedState();
+        }
+    }
+
+    public string this[string key]
+    {
+        get => _localizationService.GetText(key);
+        set
+        {
+        }
+    }
+
+    public IReadOnlyList<DisplayRow> ConnectionRows
+    {
+        get => _connectionRows;
+        private set => SetProperty(ref _connectionRows, value);
+    }
 
     public IReadOnlyList<DisplayRow> CommunicationPacket1Rows
     {
@@ -306,14 +347,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (_listenerCancellationTokenSource is not null)
         {
-            LastAction = "Listener is already running.";
+            LastAction = Text("User.ListenerAlreadyRunning");
             return;
         }
 
         CancellationTokenSource cancellationTokenSource = new();
         _listenerCancellationTokenSource = cancellationTokenSource;
         _udpCommunicationService.BytesReceived += OnBytesReceived;
-        ListenerStatus = $"Listening on port {LocalPort}";
+        ListenerStatus = FormatText("Common.ListeningOnPort", LocalPort);
 
         try
         {
@@ -321,8 +362,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception exception) when (!cancellationTokenSource.IsCancellationRequested)
         {
-            ListenerStatus = "Stopped";
-            LastAction = $"Listener error: {exception.Message}";
+            ListenerStatus = Text("Common.Stopped");
+            LastAction = FormatText("Common.ListenerError", exception.Message);
         }
         finally
         {
@@ -340,33 +381,33 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (_listenerCancellationTokenSource is null)
         {
-            ListenerStatus = "Stopped";
+            ListenerStatus = Text("Common.Stopped");
             return;
         }
 
         _listenerCancellationTokenSource.Cancel();
         _udpCommunicationService.StopListening();
-        ListenerStatus = "Stopped";
+        ListenerStatus = Text("Common.Stopped");
     }
 
     private void StartLogging()
     {
         CurrentLogFilePath = _communicationLogService.CreateNewLogFilePath();
         IsLogging = true;
-        LoggingStatus = "Logging started";
+        LoggingStatus = Text("User.LoggingStarted");
     }
 
     private void StopLogging()
     {
         IsLogging = false;
-        LoggingStatus = "Logging stopped";
+        LoggingStatus = Text("User.LoggingStopped");
     }
 
     private async Task PlayLogAsync()
     {
         if (_playbackCancellationTokenSource is not null)
         {
-            PlaybackStatus = "Playback is already running";
+            PlaybackStatus = Text("User.PlaybackAlreadyRunning");
             return;
         }
 
@@ -374,7 +415,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            PlaybackStatus = "No log file found";
+            PlaybackStatus = Text("User.NoLogFileFound");
             return;
         }
 
@@ -388,7 +429,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             if (records.Count == 0)
             {
-                PlaybackStatus = "No records found";
+                PlaybackStatus = Text("User.NoRecordsFound");
                 return;
             }
 
@@ -400,21 +441,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 RunOnUi(() =>
                 {
                     ApplyPlaybackRecord(record);
-                    PlaybackStatus = $"Playing {index + 1}/{records.Count}";
+                    PlaybackStatus = FormatText("User.PlayingProgress", index + 1, records.Count);
                 });
 
                 await Task.Delay(200, cancellationTokenSource.Token);
             }
 
-            PlaybackStatus = "Playback completed";
+            PlaybackStatus = Text("User.PlaybackCompleted");
         }
         catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
         {
-            PlaybackStatus = "Playback stopped";
+            PlaybackStatus = Text("User.PlaybackStopped");
         }
         catch (Exception exception)
         {
-            PlaybackStatus = $"Playback error: {exception.Message}";
+            PlaybackStatus = FormatText("User.PlaybackError", exception.Message);
         }
         finally
         {
@@ -431,12 +472,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (_playbackCancellationTokenSource is null)
         {
-            PlaybackStatus = "Playback stopped";
+            PlaybackStatus = Text("User.PlaybackStopped");
             return;
         }
 
         _playbackCancellationTokenSource.Cancel();
-        PlaybackStatus = "Playback stopped";
+        PlaybackStatus = Text("User.PlaybackStopped");
     }
 
     private async Task ConvertToMatlabAsync()
@@ -445,13 +486,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            MatlabConversionStatus = "No log file found to convert";
+            MatlabConversionStatus = Text("User.NoLogFileFoundToConvert");
             MatlabOutputFilePath = string.Empty;
             return;
         }
 
         SelectedPlaybackFilePath = filePath;
-        MatlabConversionStatus = "Conversion started";
+        MatlabConversionStatus = Text("User.ConversionStarted");
         MatlabOutputFilePath = string.Empty;
 
         try
@@ -460,46 +501,49 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             if (result.IsSuccess)
             {
-                MatlabConversionStatus = "Conversion completed";
+                MatlabConversionStatus = Text("User.ConversionCompleted");
                 MatlabOutputFilePath = result.OutputFilePath;
-                LastAction = "MATLAB conversion completed";
+                LastAction = Text("User.MatlabConversionCompletedAction");
                 return;
             }
 
-            MatlabConversionStatus = $"Conversion failed: {result.ErrorMessage}";
-            LastAction = "MATLAB conversion failed";
+            MatlabConversionStatus = FormatText("User.ConversionFailed", result.ErrorMessage);
+            LastAction = Text("User.MatlabConversionFailedAction");
         }
         catch (Exception exception)
         {
-            MatlabConversionStatus = $"Conversion error: {exception.Message}";
-            LastAction = "MATLAB conversion failed";
+            MatlabConversionStatus = FormatText("User.ConversionError", exception.Message);
+            LastAction = Text("User.MatlabConversionFailedAction");
         }
     }
 
-    private async Task BuildAndSendCommandPacketAsync(CommandType command, string commandName)
+    private async Task BuildAndSendCommandPacketAsync(CommandType command, string commandNameKey)
     {
         CommandPacketPayload payload = new(command);
         byte[] payloadBytes = payload.ToByteArray();
         byte[] packet = PacketBuilder.Build(PacketType.CommandPacket, payloadBytes);
+        string commandName = Text(commandNameKey);
 
         DisplayBuiltPacket(PacketType.CommandPacket, payloadBytes.Length, packet);
 
         try
         {
             await _udpCommunicationService.SendAsync(packet, RemoteIp, RemotePort);
-            LastAction = $"{commandName} packet sent";
+            LastAction = FormatText("User.CommandPacketSent", commandName);
         }
         catch (Exception exception)
         {
-            LastAction = $"{commandName} packet send failed: {exception.Message}";
+            LastAction = FormatText("User.CommandPacketSendFailed", commandName, exception.Message);
         }
     }
 
-    private async Task BuildAndSendSettingPacketAsync(SettingType setting, string valueText, string settingName)
+    private async Task BuildAndSendSettingPacketAsync(SettingType setting, string valueText, string settingNameKey)
     {
+        string settingName = Text(settingNameKey);
+
         if (!float.TryParse(valueText, NumberStyles.Float, CultureInfo.InvariantCulture, out float value))
         {
-            LastAction = $"{settingName} value must be a valid number.";
+            LastAction = FormatText("User.SettingValueInvalid", settingName);
             return;
         }
 
@@ -512,11 +556,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             await _udpCommunicationService.SendAsync(packet, RemoteIp, RemotePort);
-            LastAction = $"{settingName} packet sent";
+            LastAction = FormatText("User.SettingPacketSent", settingName);
         }
         catch (Exception exception)
         {
-            LastAction = $"{settingName} packet send failed: {exception.Message}";
+            LastAction = FormatText("User.SettingPacketSendFailed", settingName, exception.Message);
         }
     }
 
@@ -533,15 +577,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         if (_lastBuiltPacket is null)
         {
-            LastAction = "No built packet is available for validation.";
+            LastAction = Text("User.NoBuiltPacketForValidation");
             return;
         }
 
         PacketParseResult result = PacketValidator.Validate(_lastBuiltPacket);
 
         LastAction = result.IsSuccess && result.Packet is not null
-            ? $"Last built {result.Packet.PacketType} packet is valid."
-            : $"Last built packet is invalid: {result.ErrorMessage}";
+            ? FormatText("User.LastBuiltPacketValid", result.Packet.PacketType)
+            : FormatText("User.LastBuiltPacketInvalid", result.ErrorMessage);
     }
 
     private void OnBytesReceived(object? sender, byte[] bytes)
@@ -569,7 +613,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            LastAction = $"Packet parse error: {result.ErrorMessage}";
+            LastAction = FormatText("Common.PacketParseError", result.ErrorMessage);
         }
     }
 
@@ -603,7 +647,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (ArgumentException exception)
         {
-            LastAction = $"Payload parse error: {exception.Message}";
+            LastAction = FormatText("Common.PayloadParseError", exception.Message);
         }
     }
 
@@ -671,7 +715,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception exception)
         {
-            RunOnUi(() => LoggingStatus = $"Logging error: {exception.Message}");
+            RunOnUi(() => LoggingStatus = FormatText("User.LoggingError", exception.Message));
         }
     }
 
@@ -809,6 +853,73 @@ public sealed class MainViewModel : INotifyPropertyChanged
         };
     }
 
+    private void RefreshLocalizedState()
+    {
+        ConnectionRows = CreateConnectionRows();
+
+        if (LastAction is "No action yet" or "Henüz işlem yok")
+        {
+            LastAction = Text("User.NoActionYet");
+        }
+
+        if (LastReceivedFeedback is "No feedback received yet" or "Henüz geri besleme alınmadı")
+        {
+            LastReceivedFeedback = Text("User.NoFeedbackReceivedYet");
+        }
+
+        ListenerStatus = _listenerCancellationTokenSource is null
+            ? Text("Common.Stopped")
+            : FormatText("Common.ListeningOnPort", LocalPort);
+
+        LoggingStatus = IsLogging
+            ? Text("User.LoggingStarted")
+            : Text("User.LoggingStopped");
+
+        if (_playbackCancellationTokenSource is null)
+        {
+            PlaybackStatus = PlaybackStatus switch
+            {
+                "Playback stopped" or "Oynatma durduruldu" => Text("User.PlaybackStopped"),
+                "Playback completed" or "Oynatma tamamlandı" => Text("User.PlaybackCompleted"),
+                "No log file found" or "Log dosyası bulunamadı" => Text("User.NoLogFileFound"),
+                "No records found" or "Kayıt bulunamadı" => Text("User.NoRecordsFound"),
+                _ => PlaybackStatus
+            };
+        }
+
+        MatlabConversionStatus = MatlabConversionStatus switch
+        {
+            "Not converted" or "Dönüştürülmedi" => Text("User.NotConverted"),
+            "Conversion started" or "Dönüşüm başladı" => Text("User.ConversionStarted"),
+            "Conversion completed" or "Dönüşüm tamamlandı" => Text("User.ConversionCompleted"),
+            "No log file found to convert" or "Dönüştürülecek log dosyası bulunamadı" => Text("User.NoLogFileFoundToConvert"),
+            _ => MatlabConversionStatus
+        };
+
+        if (LastBuiltPacketType is "None" or "Yok")
+        {
+            LastBuiltPacketType = Text("Common.None");
+        }
+
+        if (LastReceivedPacketType is "None" or "Yok")
+        {
+            LastReceivedPacketType = Text("Common.None");
+        }
+
+        OnPropertyChanged("Item[]");
+    }
+
+    private IReadOnlyList<DisplayRow> CreateConnectionRows()
+    {
+        return new List<DisplayRow>
+        {
+            new(Text("User.ConnectionStatus"), Text("User.NotConnected")),
+            new(Text("Common.SelectedProtocol"), "UDP"),
+            new(Text("Common.LocalPort"), LocalPort.ToString(CultureInfo.InvariantCulture)),
+            new(Text("Common.RemotePort"), RemotePort.ToString(CultureInfo.InvariantCulture))
+        };
+    }
+
     private static string ToHexString(byte[] bytes)
     {
         return string.Join(" ", bytes.Select(value => value.ToString("X2", CultureInfo.InvariantCulture)));
@@ -819,16 +930,34 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Application.Current.Dispatcher.Invoke(action);
     }
 
-    private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private string Text(string key)
+    {
+        return _localizationService.GetText(key);
+    }
+
+    private string FormatText(string key, params object[] values)
+    {
+        return _localizationService.FormatText(key, values);
+    }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
         {
-            return;
+            return false;
         }
 
         field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged(string? propertyName)
+    {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 
 public sealed record DisplayRow(string Label, string Value);
+
+public sealed record LanguageOption(string DisplayName, SupportedLanguage Language);

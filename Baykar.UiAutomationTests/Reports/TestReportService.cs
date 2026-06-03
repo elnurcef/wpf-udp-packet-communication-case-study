@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Baykar.UiAutomationTests.Results;
+using Baykar.Shared.Localization;
 
 namespace Baykar.UiAutomationTests.Reports;
 
@@ -11,6 +12,12 @@ public sealed class TestReportService
     private const int Margin = 40;
     private const int LineHeight = 18;
     private const int SmallLineHeight = 14;
+    private readonly LocalizationService _localizationService;
+
+    public TestReportService(LocalizationService localizationService)
+    {
+        _localizationService = localizationService;
+    }
 
     public async Task<string> GeneratePdfReportAsync(TestRunResult result, CancellationToken cancellationToken)
     {
@@ -30,33 +37,33 @@ public sealed class TestReportService
         return outputFilePath;
     }
 
-    private static byte[] BuildPdf(TestRunResult result, CancellationToken cancellationToken)
+    private byte[] BuildPdf(TestRunResult result, CancellationToken cancellationToken)
     {
         List<string> pageStreams = BuildPageStreams(result, cancellationToken);
         return BuildPdfDocument(pageStreams);
     }
 
-    private static List<string> BuildPageStreams(TestRunResult result, CancellationToken cancellationToken)
+    private List<string> BuildPageStreams(TestRunResult result, CancellationToken cancellationToken)
     {
         List<StringBuilder> pages = [];
         StringBuilder currentPage = AddPage(pages);
         double y = Margin;
 
-        DrawText(currentPage, "UI Automation Test Report", 20, true, Margin, y);
+        DrawText(currentPage, Text("Report.Title"), 20, true, Margin, y);
         y += 28;
 
-        DrawText(currentPage, $"Test name: {result.TestName}", 10, false, Margin, y);
+        DrawText(currentPage, $"{Text("Report.TestName")}: {GetDisplayName(result.TestName)}", 10, false, Margin, y);
         y += LineHeight;
-        DrawText(currentPage, $"Start time: {FormatDateTime(result.StartedAt)}", 10, false, Margin, y);
+        DrawText(currentPage, $"{Text("Report.StartTime")}: {FormatDateTime(result.StartedAt)}", 10, false, Margin, y);
         y += LineHeight;
-        DrawText(currentPage, $"Finish time: {FormatDateTime(result.FinishedAt)}", 10, false, Margin, y);
+        DrawText(currentPage, $"{Text("Report.FinishTime")}: {FormatDateTime(result.FinishedAt)}", 10, false, Margin, y);
         y += LineHeight;
-        DrawText(currentPage, $"Duration: {FormatDuration(result.FinishedAt - result.StartedAt)}", 10, false, Margin, y);
+        DrawText(currentPage, $"{Text("Report.Duration")}: {FormatDuration(result.FinishedAt - result.StartedAt)}", 10, false, Margin, y);
         y += LineHeight;
-        DrawText(currentPage, $"Final result: {(result.IsPassed ? "Passed" : "Failed")}", 12, true, Margin, y);
+        DrawText(currentPage, $"{Text("Report.FinalResult")}: {GetResultText(result.IsPassed)}", 12, true, Margin, y);
         y += LineHeight + 10;
 
-        DrawText(currentPage, "Step Results", 12, true, Margin, y);
+        DrawText(currentPage, Text("Report.StepResults"), 12, true, Margin, y);
         y += LineHeight;
         DrawTableHeader(currentPage, ref y);
 
@@ -86,21 +93,21 @@ public sealed class TestReportService
         return page;
     }
 
-    private static void DrawTableHeader(StringBuilder page, ref double y)
+    private void DrawTableHeader(StringBuilder page, ref double y)
     {
-        DrawText(page, "Step", 10, true, Margin, y);
-        DrawText(page, "Result", 10, true, Margin + 200, y);
-        DrawText(page, "Message", 10, true, Margin + 280, y);
+        DrawText(page, Text("Report.Step"), 10, true, Margin, y);
+        DrawText(page, Text("Report.Result"), 10, true, Margin + 200, y);
+        DrawText(page, Text("Report.Message"), 10, true, Margin + 280, y);
         y += LineHeight;
         DrawLine(page, Margin, y, PageWidth - Margin, y);
         y += 6;
     }
 
-    private static void DrawStepRow(StringBuilder page, TestStepResult stepResult, ref double y)
+    private void DrawStepRow(StringBuilder page, TestStepResult stepResult, ref double y)
     {
-        string resultText = stepResult.IsPassed ? "Passed" : "Failed";
+        string resultText = GetResultText(stepResult.IsPassed);
         string message = string.IsNullOrWhiteSpace(stepResult.Message) ? "-" : stepResult.Message;
-        string[] stepNameLines = WrapText(stepResult.StepName, 28).ToArray();
+        string[] stepNameLines = WrapText(GetDisplayName(stepResult.StepName), 28).ToArray();
         string[] messageLines = WrapText(message, 58).ToArray();
         int lineCount = Math.Max(stepNameLines.Length, messageLines.Length);
 
@@ -136,10 +143,10 @@ public sealed class TestReportService
             $"0.5 w {x1:0.##} {ToPdfY(y1):0.##} m {x2:0.##} {ToPdfY(y2):0.##} l S"));
     }
 
-    private static double GetStepRowHeight(TestStepResult stepResult)
+    private double GetStepRowHeight(TestStepResult stepResult)
     {
         string message = string.IsNullOrWhiteSpace(stepResult.Message) ? "-" : stepResult.Message;
-        int stepNameLineCount = WrapText(stepResult.StepName, 28).Count();
+        int stepNameLineCount = WrapText(GetDisplayName(stepResult.StepName), 28).Count();
         int messageLineCount = WrapText(message, 58).Count();
         return (Math.Max(stepNameLineCount, messageLineCount) * SmallLineHeight) + 6;
     }
@@ -147,15 +154,16 @@ public sealed class TestReportService
     private static byte[] BuildPdfDocument(IReadOnlyList<string> pageStreams)
     {
         int pageCount = pageStreams.Count;
-        int firstPageObjectId = 5;
+        int firstPageObjectId = 6;
         int firstContentObjectId = firstPageObjectId + pageCount;
         int objectCount = firstContentObjectId + pageCount - 1;
 
         Dictionary<int, string> objects = new()
         {
             [1] = "<< /Type /Catalog /Pages 2 0 R >>",
-            [3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-            [4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"
+            [3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding 5 0 R >>",
+            [4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding 5 0 R >>",
+            [5] = "<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [128 /gbreve /Gbreve /scedilla /Scedilla /dotlessi /Idotaccent] >>"
         };
 
         string pageReferences = string.Join(
@@ -256,6 +264,32 @@ public sealed class TestReportService
                 case ')':
                     escapedText.Append(@"\)");
                     break;
+                case 'ğ':
+                    AppendOctal(escapedText, 128);
+                    break;
+                case 'Ğ':
+                    AppendOctal(escapedText, 129);
+                    break;
+                case 'ş':
+                    AppendOctal(escapedText, 130);
+                    break;
+                case 'Ş':
+                    AppendOctal(escapedText, 131);
+                    break;
+                case 'ı':
+                    AppendOctal(escapedText, 132);
+                    break;
+                case 'İ':
+                    AppendOctal(escapedText, 133);
+                    break;
+                case 'Ç':
+                case 'Ö':
+                case 'Ü':
+                case 'ç':
+                case 'ö':
+                case 'ü':
+                    AppendOctal(escapedText, GetWindows1254Byte(character));
+                    break;
                 case >= ' ' and <= '~':
                     escapedText.Append(character);
                     break;
@@ -266,6 +300,26 @@ public sealed class TestReportService
         }
 
         return escapedText.ToString();
+    }
+
+    private static void AppendOctal(StringBuilder builder, int value)
+    {
+        builder.Append('\\');
+        builder.Append(Convert.ToString(value, 8).PadLeft(3, '0'));
+    }
+
+    private static int GetWindows1254Byte(char character)
+    {
+        return character switch
+        {
+            'Ç' => 199,
+            'Ö' => 214,
+            'Ü' => 220,
+            'ç' => 231,
+            'ö' => 246,
+            'ü' => 252,
+            _ => '?'
+        };
     }
 
     private static double ToPdfY(double topY)
@@ -281,5 +335,22 @@ public sealed class TestReportService
     private static string FormatDuration(TimeSpan value)
     {
         return value.ToString(@"hh\:mm\:ss\.fff");
+    }
+
+    private string GetDisplayName(string name)
+    {
+        return _localizationService.GetTextOrDefault($"AutomationStep.{name}", name);
+    }
+
+    private string GetResultText(bool isPassed)
+    {
+        return isPassed
+            ? Text("Report.Passed")
+            : Text("Report.Failed");
+    }
+
+    private string Text(string key)
+    {
+        return _localizationService.GetText(key);
     }
 }

@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Input;
 using Baykar.Shared.Communication;
 using Baykar.Shared.Enums;
+using Baykar.Shared.Localization;
 using Baykar.Shared.Models;
 using Baykar.Shared.Packets;
 using Baykar.SimulationInterface.Commands;
@@ -22,6 +23,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private readonly UdpCommunicationService _udpCommunicationService = new();
     private readonly PacketCaptureStateMachine _packetCaptureStateMachine = new();
+    private readonly LocalizationService _localizationService = new();
 
     private CancellationTokenSource? _listenerCancellationTokenSource;
     private CancellationTokenSource? _transmissionCancellationTokenSource;
@@ -41,11 +43,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _lastBuiltCommunicationPacket1Bytes = string.Empty;
     private string _lastBuiltCommunicationPacket2Bytes = string.Empty;
     private string _packetValidationResult = "No packet validation yet";
+    private LanguageOption _selectedLanguage;
     private byte[]? _lastBuiltCommunicationPacket1;
     private byte[]? _lastBuiltCommunicationPacket2;
 
     public MainViewModel()
     {
+        LanguageOptions =
+        [
+            new LanguageOption(_localizationService.GetText("Common.English"), SupportedLanguage.English),
+            new LanguageOption(_localizationService.GetText("Common.Turkish"), SupportedLanguage.Turkish)
+        ];
+
+        _selectedLanguage = LanguageOptions[0];
+        RefreshLocalizedState();
+
         StartSimulationCommand = new RelayCommand(StartSimulation);
         StopSimulationCommand = new RelayCommand(StopSimulation);
         ResetCountersCommand = new RelayCommand(ResetCounters);
@@ -53,6 +65,36 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; }
+
+    public LanguageOption SelectedLanguage
+    {
+        get => _selectedLanguage;
+        set
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            if (!SetProperty(ref _selectedLanguage, value))
+            {
+                return;
+            }
+
+            _localizationService.SetLanguage(value.Language);
+            RefreshLocalizedState();
+        }
+    }
+
+    public string this[string key]
+    {
+        get => _localizationService.GetText(key);
+        set
+        {
+        }
+    }
 
     public string SimulationStatus
     {
@@ -166,7 +208,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void StartSimulation()
     {
-        SimulationStatus = "Running";
+        SimulationStatus = Text("Common.Running");
         StartListenerIfNeeded();
         StartTransmissionLoopIfNeeded();
     }
@@ -176,8 +218,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _transmissionCancellationTokenSource?.Cancel();
         _listenerCancellationTokenSource?.Cancel();
         _udpCommunicationService.StopListening();
-        SimulationStatus = "Stopped";
-        ListenerStatus = "Stopped";
+        SimulationStatus = Text("Common.Stopped");
+        ListenerStatus = Text("Common.Stopped");
     }
 
     private void StartListenerIfNeeded()
@@ -190,7 +232,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         CancellationTokenSource cancellationTokenSource = new();
         _listenerCancellationTokenSource = cancellationTokenSource;
         _udpCommunicationService.BytesReceived += OnBytesReceived;
-        ListenerStatus = $"Listening on port {LocalPort}";
+        ListenerStatus = FormatText("Common.ListeningOnPort", LocalPort);
 
         _ = ListenAsync(cancellationTokenSource);
     }
@@ -205,8 +247,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             RunOnUi(() =>
             {
-                ListenerStatus = "Stopped";
-                ParserErrorMessage = $"Listener error: {exception.Message}";
+                ListenerStatus = Text("Common.Stopped");
+                ParserErrorMessage = FormatText("Common.ListenerError", exception.Message);
             });
         }
         finally
@@ -255,7 +297,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception exception)
         {
-            RunOnUi(() => ParserErrorMessage = $"Transmission error: {exception.Message}");
+            RunOnUi(() => ParserErrorMessage = FormatText("Simulation.TransmissionError", exception.Message));
         }
         finally
         {
@@ -319,14 +361,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _lastBuiltCommunicationPacket2 = null;
         LastBuiltCommunicationPacket1Bytes = string.Empty;
         LastBuiltCommunicationPacket2Bytes = string.Empty;
-        PacketValidationResult = "No packet validation yet";
+        PacketValidationResult = Text("Simulation.NoPacketValidationYet");
     }
 
     private void ValidateLastBuiltPackets()
     {
         if (_lastBuiltCommunicationPacket1 is null || _lastBuiltCommunicationPacket2 is null)
         {
-            PacketValidationResult = "No built communication packets are available for validation.";
+            PacketValidationResult = Text("Simulation.NoBuiltPacketsForValidation");
             return;
         }
 
@@ -334,8 +376,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         PacketParseResult packet2Result = PacketValidator.Validate(_lastBuiltCommunicationPacket2);
 
         PacketValidationResult = packet1Result.IsSuccess && packet2Result.IsSuccess
-            ? "Both built communication packets are valid."
-            : $"Packet 1: {GetResultText(packet1Result)} Packet 2: {GetResultText(packet2Result)}";
+            ? Text("Simulation.BothBuiltPacketsValid")
+            : FormatText("Simulation.PacketValidationPair", GetResultText(packet1Result), GetResultText(packet2Result));
     }
 
     private void OnBytesReceived(object? sender, byte[] bytes)
@@ -363,7 +405,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            ParserErrorMessage = $"Packet parse error: {result.ErrorMessage}";
+            ParserErrorMessage = FormatText("Common.PacketParseError", result.ErrorMessage);
         }
     }
 
@@ -386,7 +428,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (ArgumentException exception)
         {
-            ParserErrorMessage = $"Payload parse error: {exception.Message}";
+            ParserErrorMessage = FormatText("Common.PayloadParseError", exception.Message);
         }
     }
 
@@ -415,15 +457,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception exception)
         {
-            RunOnUi(() => ParserErrorMessage = $"Feedback send failed: {exception.Message}");
+            RunOnUi(() => ParserErrorMessage = FormatText("Simulation.FeedbackSendFailed", exception.Message));
         }
     }
 
-    private static string GetResultText(PacketParseResult result)
+    private string GetResultText(PacketParseResult result)
     {
         return result.IsSuccess
-            ? "Valid."
-            : $"Invalid - {result.ErrorMessage}";
+            ? Text("Common.Valid")
+            : FormatText("Common.Invalid", result.ErrorMessage);
     }
 
     private static string ToHexString(byte[] bytes)
@@ -436,14 +478,73 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Application.Current.Dispatcher.Invoke(action);
     }
 
-    private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private void RefreshLocalizedState()
+    {
+        SimulationStatus = _transmissionCancellationTokenSource is null
+            ? Text("Common.Stopped")
+            : Text("Common.Running");
+
+        ListenerStatus = _listenerCancellationTokenSource is null
+            ? Text("Common.Stopped")
+            : FormatText("Common.ListeningOnPort", LocalPort);
+
+        if (LastReceivedCommand is "None" or "Yok")
+        {
+            LastReceivedCommand = Text("Common.None");
+        }
+
+        if (LastReceivedSetting is "None" or "Yok")
+        {
+            LastReceivedSetting = Text("Common.None");
+        }
+
+        if (LastSentFeedback is "None" or "Yok")
+        {
+            LastSentFeedback = Text("Common.None");
+        }
+
+        if (ParserErrorMessage is "No parser errors" or "Ayrıştırıcı hatası yok")
+        {
+            ParserErrorMessage = Text("Simulation.NoParserErrors");
+        }
+
+        PacketValidationResult = PacketValidationResult switch
+        {
+            "No packet validation yet" or "Henüz paket doğrulaması yok" => Text("Simulation.NoPacketValidationYet"),
+            "No built communication packets are available for validation." or "Doğrulama için oluşturulmuş haberleşme paketleri yok." => Text("Simulation.NoBuiltPacketsForValidation"),
+            "Both built communication packets are valid." or "Oluşturulan iki haberleşme paketi de geçerli." => Text("Simulation.BothBuiltPacketsValid"),
+            _ => PacketValidationResult
+        };
+
+        OnPropertyChanged("Item[]");
+    }
+
+    private string Text(string key)
+    {
+        return _localizationService.GetText(key);
+    }
+
+    private string FormatText(string key, params object[] values)
+    {
+        return _localizationService.FormatText(key, values);
+    }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
         {
-            return;
+            return false;
         }
 
         field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged(string? propertyName)
+    {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
+
+public sealed record LanguageOption(string DisplayName, SupportedLanguage Language);
