@@ -256,6 +256,29 @@ Because of this inconsistency, the implementation uses `0` as the sample value f
 16. Convert the saved log to MATLAB format
 17. Stop simulation and listener without application crash
 
+## Stage 2 UI Automation Tests
+
+Stage 2 includes a separate console application named `Baykar.UiAutomationTests`.
+It reads a JSON test script and controls the already running `Baykar.UserInterface` window by WPF AutomationId values.
+
+Requirements:
+
+* `Baykar.UserInterface` must be running before the automation test runner is started.
+* `Baykar.SimulationInterface` should be running for communication and feedback-related tests.
+* The default test script is located at:
+
+```text
+Baykar.UserInterface/Release/Test/default-test-script.json
+```
+
+Run the automation test runner from the solution root:
+
+```bash
+dotnet run --project .\Baykar.UiAutomationTests\Baykar.UiAutomationTests.csproj
+```
+
+The runner prints each step result and a final `PASSED` or `FAILED` result to the console.
+
 ## Repository Note
 
 Generated runtime files such as logs, MATLAB output files, `bin`, and `obj` folders should not be committed to the repository.

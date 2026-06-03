@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Baykar.SimulationInterface"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Baykar.Shared", "Baykar.Shared\Baykar.Shared.csproj", "{F341AC83-B90E-46B4-A9D1-955AE68F25F2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Baykar.UiAutomationTests", "Baykar.UiAutomationTests\Baykar.UiAutomationTests.csproj", "{4456E7B6-653D-44B5-93A9-AA5406F6F434}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{F341AC83-B90E-46B4-A9D1-955AE68F25F2}.Release|x64.Build.0 = Release|Any CPU
 		{F341AC83-B90E-46B4-A9D1-955AE68F25F2}.Release|x86.ActiveCfg = Release|Any CPU
 		{F341AC83-B90E-46B4-A9D1-955AE68F25F2}.Release|x86.Build.0 = Release|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Debug|x64.Build.0 = Debug|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Debug|x86.Build.0 = Debug|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Release|x64.ActiveCfg = Release|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Release|x64.Build.0 = Release|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Release|x86.ActiveCfg = Release|Any CPU
+		{4456E7B6-653D-44B5-93A9-AA5406F6F434}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

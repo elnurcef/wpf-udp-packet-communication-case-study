@@ -50,24 +50,39 @@
                     <StackPanel Margin="12">
                         <ItemsControl ItemsSource="{Binding ConnectionRows}"
                                       ItemTemplate="{StaticResource DisplayRowTemplate}" />
-                        <TextBlock Margin="0,8,0,6">
+                        <TextBlock Margin="0,8,0,6"
+                                   AutomationProperties.AutomationId="ListenerStatusText"
+                                   AutomationProperties.Name="{Binding ListenerStatus, Mode=OneWay}">
                             <Run Text="Listener Status: " FontWeight="SemiBold" />
                             <Run Text="{Binding ListenerStatus, Mode=OneWay}" />
                         </TextBlock>
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="Start Listener" Command="{Binding StartListenerCommand}" MinWidth="110" Margin="0,0,10,0" />
-                            <Button Content="Stop Listener" Command="{Binding StopListenerCommand}" MinWidth="110" />
+                            <Button Content="Start Listener"
+                                    Command="{Binding StartListenerCommand}"
+                                    AutomationProperties.AutomationId="StartListenerButton"
+                                    AutomationProperties.Name="Start Listener"
+                                    MinWidth="110"
+                                    Margin="0,0,10,0" />
+                            <Button Content="Stop Listener"
+                                    Command="{Binding StopListenerCommand}"
+                                    AutomationProperties.AutomationId="StopListenerButton"
+                                    AutomationProperties.Name="Stop Listener"
+                                    MinWidth="110" />
                         </StackPanel>
                     </StackPanel>
                 </GroupBox>
 
                 <GroupBox Grid.Row="0" Grid.Column="1" Header="Packet Counters Panel" Margin="10,0,0,16">
                     <StackPanel Margin="12">
-                        <TextBlock Margin="0,3">
+                        <TextBlock Margin="0,3"
+                                   AutomationProperties.AutomationId="ValidPacketCountText"
+                                   AutomationProperties.Name="{Binding ValidPacketCount, Mode=OneWay}">
                             <Run Text="Valid Packet Count: " FontWeight="SemiBold" />
                             <Run Text="{Binding ValidPacketCount, Mode=OneWay}" />
                         </TextBlock>
-                        <TextBlock Margin="0,3">
+                        <TextBlock Margin="0,3"
+                                   AutomationProperties.AutomationId="InvalidPacketCountText"
+                                   AutomationProperties.Name="{Binding InvalidPacketCount, Mode=OneWay}">
                             <Run Text="Invalid Packet Count: " FontWeight="SemiBold" />
                             <Run Text="{Binding InvalidPacketCount, Mode=OneWay}" />
                         </TextBlock>
@@ -88,19 +103,37 @@
 
                 <GroupBox Grid.Row="2" Grid.Column="0" Header="Command Panel" Margin="0,0,10,16">
                     <StackPanel Margin="12" Orientation="Horizontal">
-                        <Button Content="Send Command 1" Command="{Binding SendCommand1Command}" MinWidth="130" Margin="0,0,10,0" />
-                        <Button Content="Send Command 2" Command="{Binding SendCommand2Command}" MinWidth="130" Margin="0,0,10,0" />
-                        <Button Content="Send Command 3" Command="{Binding SendCommand3Command}" MinWidth="130" />
+                        <Button Content="Send Command 1"
+                                Command="{Binding SendCommand1Command}"
+                                AutomationProperties.AutomationId="SendCommand1Button"
+                                AutomationProperties.Name="Send Command 1"
+                                MinWidth="130"
+                                Margin="0,0,10,0" />
+                        <Button Content="Send Command 2"
+                                Command="{Binding SendCommand2Command}"
+                                AutomationProperties.AutomationId="SendCommand2Button"
+                                AutomationProperties.Name="Send Command 2"
+                                MinWidth="130"
+                                Margin="0,0,10,0" />
+                        <Button Content="Send Command 3"
+                                Command="{Binding SendCommand3Command}"
+                                AutomationProperties.AutomationId="SendCommand3Button"
+                                AutomationProperties.Name="Send Command 3"
+                                MinWidth="130" />
                     </StackPanel>
                 </GroupBox>
 
                 <GroupBox Grid.Row="2" Grid.Column="1" Header="Feedback Panel" Margin="10,0,0,16">
                     <StackPanel Margin="12">
-                        <TextBlock Margin="0,3">
+                        <TextBlock Margin="0,3"
+                                   AutomationProperties.AutomationId="LastReceivedFeedbackText"
+                                   AutomationProperties.Name="{Binding LastReceivedFeedback, Mode=OneWay}">
                             <Run Text="Last Received Feedback: " FontWeight="SemiBold" />
                             <Run Text="{Binding LastReceivedFeedback, Mode=OneWay}" />
                         </TextBlock>
-                        <TextBlock Margin="0,3">
+                        <TextBlock Margin="0,3"
+                                   AutomationProperties.AutomationId="LastActionText"
+                                   AutomationProperties.Name="{Binding LastAction, Mode=OneWay}">
                             <Run Text="Last Action: " FontWeight="SemiBold" />
                             <Run Text="{Binding LastAction, Mode=OneWay}" />
                         </TextBlock>
@@ -123,20 +156,63 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="Setting 1:" VerticalAlignment="Center" Margin="0,0,10,8" />
-                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Setting1Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,10,8" />
-                        <Button Grid.Row="0" Grid.Column="2" Content="Send" Command="{Binding SendSetting1Command}" Margin="0,0,0,8" />
+                        <TextBox Grid.Row="0"
+                                 Grid.Column="1"
+                                 Text="{Binding Setting1Value, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.AutomationId="Setting1TextBox"
+                                 AutomationProperties.Name="Setting 1 Value"
+                                 Margin="0,0,10,8" />
+                        <Button Grid.Row="0"
+                                Grid.Column="2"
+                                Content="Send"
+                                Command="{Binding SendSetting1Command}"
+                                AutomationProperties.AutomationId="SendSetting1Button"
+                                AutomationProperties.Name="Send Setting 1"
+                                Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="1" Text="Setting 2:" VerticalAlignment="Center" Margin="0,0,10,8" />
-                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Setting2Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,10,8" />
-                        <Button Grid.Row="1" Grid.Column="2" Content="Send" Command="{Binding SendSetting2Command}" Margin="0,0,0,8" />
+                        <TextBox Grid.Row="1"
+                                 Grid.Column="1"
+                                 Text="{Binding Setting2Value, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.AutomationId="Setting2TextBox"
+                                 AutomationProperties.Name="Setting 2 Value"
+                                 Margin="0,0,10,8" />
+                        <Button Grid.Row="1"
+                                Grid.Column="2"
+                                Content="Send"
+                                Command="{Binding SendSetting2Command}"
+                                AutomationProperties.AutomationId="SendSetting2Button"
+                                AutomationProperties.Name="Send Setting 2"
+                                Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="2" Text="Setting 3:" VerticalAlignment="Center" Margin="0,0,10,8" />
-                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Setting3Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,10,8" />
-                        <Button Grid.Row="2" Grid.Column="2" Content="Send" Command="{Binding SendSetting3Command}" Margin="0,0,0,8" />
+                        <TextBox Grid.Row="2"
+                                 Grid.Column="1"
+                                 Text="{Binding Setting3Value, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.AutomationId="Setting3TextBox"
+                                 AutomationProperties.Name="Setting 3 Value"
+                                 Margin="0,0,10,8" />
+                        <Button Grid.Row="2"
+                                Grid.Column="2"
+                                Content="Send"
+                                Command="{Binding SendSetting3Command}"
+                                AutomationProperties.AutomationId="SendSetting3Button"
+                                AutomationProperties.Name="Send Setting 3"
+                                Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="3" Text="Setting 4:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Setting4Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,10,0" />
-                        <Button Grid.Row="3" Grid.Column="2" Content="Send" Command="{Binding SendSetting4Command}" />
+                        <TextBox Grid.Row="3"
+                                 Grid.Column="1"
+                                 Text="{Binding Setting4Value, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.AutomationId="Setting4TextBox"
+                                 AutomationProperties.Name="Setting 4 Value"
+                                 Margin="0,0,10,0" />
+                        <Button Grid.Row="3"
+                                Grid.Column="2"
+                                Content="Send"
+                                Command="{Binding SendSetting4Command}"
+                                AutomationProperties.AutomationId="SendSetting4Button"
+                                AutomationProperties.Name="Send Setting 4" />
                     </Grid>
                 </GroupBox>
 
@@ -175,6 +251,8 @@
                                 Grid.Column="1"
                                 Content="Validate Last Built Packet"
                                 Command="{Binding ValidateLastBuiltPacketCommand}"
+                                AutomationProperties.AutomationId="ValidateLastBuiltPacketButton"
+                                AutomationProperties.Name="Validate Last Built Packet"
                                 MinWidth="180"
                                 HorizontalAlignment="Left"
                                 Margin="0,10,0,0" />
@@ -193,7 +271,12 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="Last Received Packet Type:" FontWeight="SemiBold" Margin="0,0,10,6" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LastReceivedPacketType, Mode=OneWay}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="1"
+                                   Text="{Binding LastReceivedPacketType, Mode=OneWay}"
+                                   AutomationProperties.AutomationId="LastReceivedPacketTypeText"
+                                   AutomationProperties.Name="{Binding LastReceivedPacketType, Mode=OneWay}"
+                                   Margin="0,0,0,6" />
 
                         <TextBlock Grid.Row="1" Text="Last Received Packet Bytes:" FontWeight="SemiBold" Margin="0,0,10,0" />
                         <TextBox Grid.Row="1"
@@ -221,7 +304,12 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="Communication Packet 1 Received Count:" FontWeight="SemiBold" Margin="0,0,10,6" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CommunicationPacket1ReceivedCount, Mode=OneWay}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="1"
+                                   Text="{Binding CommunicationPacket1ReceivedCount, Mode=OneWay}"
+                                   AutomationProperties.AutomationId="CommunicationPacket1ReceivedCountText"
+                                   AutomationProperties.Name="{Binding CommunicationPacket1ReceivedCount, Mode=OneWay}"
+                                   Margin="0,0,0,6" />
 
                         <TextBlock Grid.Row="1" Text="Communication Packet 1 Last Received At:" FontWeight="SemiBold" Margin="0,0,10,6" />
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastCommunicationPacket1ReceivedAt, Mode=OneWay}" Margin="0,0,0,6" />
@@ -236,7 +324,12 @@
                                  Margin="0,0,0,10" />
 
                         <TextBlock Grid.Row="3" Text="Communication Packet 2 Received Count:" FontWeight="SemiBold" Margin="0,0,10,6" />
-                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CommunicationPacket2ReceivedCount, Mode=OneWay}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="3"
+                                   Grid.Column="1"
+                                   Text="{Binding CommunicationPacket2ReceivedCount, Mode=OneWay}"
+                                   AutomationProperties.AutomationId="CommunicationPacket2ReceivedCountText"
+                                   AutomationProperties.Name="{Binding CommunicationPacket2ReceivedCount, Mode=OneWay}"
+                                   Margin="0,0,0,6" />
 
                         <TextBlock Grid.Row="4" Text="Communication Packet 2 Last Received At:" FontWeight="SemiBold" Margin="0,0,10,6" />
                         <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding LastCommunicationPacket2ReceivedAt, Mode=OneWay}" Margin="0,0,0,6" />
@@ -268,7 +361,12 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="Logging Status:" FontWeight="SemiBold" Margin="0,0,10,6" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LoggingStatus, Mode=OneWay}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="1"
+                                   Text="{Binding LoggingStatus, Mode=OneWay}"
+                                   AutomationProperties.AutomationId="LoggingStatusText"
+                                   AutomationProperties.Name="{Binding LoggingStatus, Mode=OneWay}"
+                                   Margin="0,0,0,6" />
 
                         <TextBlock Grid.Row="1" Text="Current Log File Path:" FontWeight="SemiBold" Margin="0,0,10,6" />
                         <TextBox Grid.Row="1"
@@ -279,7 +377,12 @@
                                  Margin="0,0,0,6" />
 
                         <TextBlock Grid.Row="2" Text="Playback Status:" FontWeight="SemiBold" Margin="0,0,10,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PlaybackStatus, Mode=OneWay}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="2"
+                                   Grid.Column="1"
+                                   Text="{Binding PlaybackStatus, Mode=OneWay}"
+                                   AutomationProperties.AutomationId="PlaybackStatusText"
+                                   AutomationProperties.Name="{Binding PlaybackStatus, Mode=OneWay}"
+                                   Margin="0,0,0,6" />
 
                         <TextBlock Grid.Row="3" Text="Selected Playback File Path:" FontWeight="SemiBold" Margin="0,0,10,8" />
                         <TextBox Grid.Row="3"
@@ -289,7 +392,12 @@
                                  Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="4" Text="MATLAB Conversion Status:" FontWeight="SemiBold" Margin="0,0,10,6" />
-                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding MatlabConversionStatus, Mode=OneWay}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="4"
+                                   Grid.Column="1"
+                                   Text="{Binding MatlabConversionStatus, Mode=OneWay}"
+                                   AutomationProperties.AutomationId="MatlabConversionStatusText"
+                                   AutomationProperties.Name="{Binding MatlabConversionStatus, Mode=OneWay}"
+                                   Margin="0,0,0,6" />
 
                         <TextBlock Grid.Row="5" Text="MATLAB Output File Path:" FontWeight="SemiBold" Margin="0,0,10,8" />
                         <TextBox Grid.Row="5"
@@ -300,11 +408,35 @@
                                  Margin="0,0,0,8" />
 
                         <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal">
-                            <Button Content="Start Logging" Command="{Binding StartLoggingCommand}" MinWidth="120" Margin="0,0,10,0" />
-                            <Button Content="Stop Logging" Command="{Binding StopLoggingCommand}" MinWidth="120" Margin="0,0,10,0" />
-                            <Button Content="Play Log" Command="{Binding PlayLogCommand}" MinWidth="120" Margin="0,0,10,0" />
-                            <Button Content="Stop Playback" Command="{Binding StopPlaybackCommand}" MinWidth="120" Margin="0,0,10,0" />
-                            <Button Content="Convert to MATLAB" Command="{Binding ConvertToMatlabCommand}" MinWidth="140" />
+                            <Button Content="Start Logging"
+                                    Command="{Binding StartLoggingCommand}"
+                                    AutomationProperties.AutomationId="StartLoggingButton"
+                                    AutomationProperties.Name="Start Logging"
+                                    MinWidth="120"
+                                    Margin="0,0,10,0" />
+                            <Button Content="Stop Logging"
+                                    Command="{Binding StopLoggingCommand}"
+                                    AutomationProperties.AutomationId="StopLoggingButton"
+                                    AutomationProperties.Name="Stop Logging"
+                                    MinWidth="120"
+                                    Margin="0,0,10,0" />
+                            <Button Content="Play Log"
+                                    Command="{Binding PlayLogCommand}"
+                                    AutomationProperties.AutomationId="PlayLogButton"
+                                    AutomationProperties.Name="Play Log"
+                                    MinWidth="120"
+                                    Margin="0,0,10,0" />
+                            <Button Content="Stop Playback"
+                                    Command="{Binding StopPlaybackCommand}"
+                                    AutomationProperties.AutomationId="StopPlaybackButton"
+                                    AutomationProperties.Name="Stop Playback"
+                                    MinWidth="120"
+                                    Margin="0,0,10,0" />
+                            <Button Content="Convert to MATLAB"
+                                    Command="{Binding ConvertToMatlabCommand}"
+                                    AutomationProperties.AutomationId="ConvertToMatlabButton"
+                                    AutomationProperties.Name="Convert to MATLAB"
+                                    MinWidth="140" />
                         </StackPanel>
                     </Grid>
                 </GroupBox>

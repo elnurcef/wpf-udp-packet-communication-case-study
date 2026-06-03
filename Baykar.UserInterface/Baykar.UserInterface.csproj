@@ -11,4 +11,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Baykar.Shared\Baykar.Shared.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Release\Test\default-test-script.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>
